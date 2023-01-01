@@ -1,0 +1,80 @@
+name: build-silverblue
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 3 * * *"
+
+env:
+  IMAGE_NAME: silverblue
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        major_version: [37]
+        nvidia: [yes, no]
+        include:
+          - major_version: 37
+            is_latest: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate tags
+        id: tags
+        shell: bash
+        run: |
+          suffix=""
+          if [[ "${{ matrix.nvidia }}" == "yes" ]]; then
+            suffix="-nvidia"
+          fi
+          echo "sha_short=$(git rev-parse --short HEAD)${suffix}" >> $GITHUB_OUTPUT
+          alias_tags=()
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            alias_tags+=("pr-${{ github.event.number }}${suffix}")
+          else
+            echo "date=$(date +%Y%m%d)${suffix}" >> $GITHUB_OUTPUT
+            alias_tags+=("${{ matrix.major_version }}${suffix}")
+            if [[ "${{ matrix.is_latest }}" == "true" ]]; then
+              alias_tags+=("latest${suffix}")
+            fi
+          fi
+          echo "alias_tags=${alias_tags[*]}" >> $GITHUB_OUTPUT
+
+      - id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: |
+            ${{ steps.tags.outputs.alias_tags }}
+            ${{ steps.tags.outputs.date }}
+            ${{ steps.tags.outputs.sha_short }}
+          build-args: |
+            FEDORA_MAJOR_VERSION=${{ matrix.major_version }}
+            NVIDIA=${{ matrix.nvidia }}
+          containerfiles: |
+            ./Containerfile
+          oci: true
+
+      - id: push
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+          extra-args: |
+            --disable-content-trust
+
+      - name: Echo outputs
+        run: |
+          echo "${{ toJSON(steps.push.outputs) }}"
