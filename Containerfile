@@ -35,7 +35,8 @@ ARG FEDORA_MAJOR_VERSION
 # Add RPM Fusion repos and install Nvidia driver
 RUN rpm-ostree install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDORA_MAJOR_VERSION}.noarch.rpm && \
   rpm-ostree install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDORA_MAJOR_VERSION}.noarch.rpm && \
-  rpm-ostree install akmod-nvidia xorg-x11-drv-nvidia
+  rpm-ostree install akmod-nvidia xorg-x11-drv-nvidia && \
+  rm -rf /var/log/akmods
 
 # Disable nouveau. This might not be needed in the future:
 # https://rpmfusion.org/Howto/NVIDIA#OSTree_.28Silverblue.2FKinoite.2Fetc.29
