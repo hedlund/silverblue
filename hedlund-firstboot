@@ -75,8 +75,23 @@ echo "# Installing 1Password"
 if [ "$?" != 0 ]; then
   zerr "Installing 1Password Failed"
 fi
-echo "100"
+echo "95"
 
+# We cannot modify the kernel arguments when building the OCI image, so we'll
+# have to delay it to here. First check if we actually have the nvidia driver
+# installed.
+if [[ "$(/usr/bin/rpm-ostree status --booted)" =~ "akmod-nvidia" ]]; then
+  echo "# Fixing Nvidia Driver (Disabling Nouveau)"
+  # This might not be needed in the future:
+  # https://rpmfusion.org/Howto/NVIDIA#OSTree_.28Silverblue.2FKinoite.2Fetc.29
+  if [[ ! "$(/usr/bin/rpm-ostree kargs)" =~ "blacklist=nouveau" ]]; then
+    sudo /usr/bin/rpm-ostree kargs --append=rd.driver.blacklist=nouveau --append=modprobe.blacklist=nouveau --append=nvidia-drm.modeset=1
+    if [ "$?" != 0 ]; then
+      zerr "Disabling Nouveau Failed"
+    fi
+  fi
+fi
+echo "100"
 
 echo "# Wrapping Up"
 mkdir -p "$HOME/.config/hedlund/"
