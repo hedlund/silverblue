@@ -21,7 +21,8 @@ RUN rpm-ostree install \
   fira-code-fonts \
   gnome-tweaks \
   podman-compose \
-  podman-docker
+  podman-docker \
+  gnome-shell-extension-pop-shell
 
 #-------------------------------------------------------------------------------
 FROM base AS nvidia-no
